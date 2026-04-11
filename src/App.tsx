@@ -2,14 +2,14 @@ import { useEffect, useRef, useState } from "react"
 import { connect, on, send } from "./lib/socket"
 import {
     initDevice, setupTransport, produceStream,
-    consumeProducer, waitFor, getSendPC, getRecvPC
+    consumeProducer, waitFor, setRoomKey
 } from "./lib/mediasoupClient"
 import {
     generateKeyPair, exportPublicKey,
     importPublicKey, deriveSharedKey,
     encryptRoomKey, decryptRoomKey
 } from "./lib/keyExchange"
-import { generateRoomKey, encryptPacket, decryptPacket } from "./lib/crypto"
+import { generateRoomKey } from "./lib/crypto"
 
 const API = "http://localhost:8080/api"
 const WS  = "ws://localhost:8080"
@@ -35,7 +35,6 @@ export default function App() {
     const roomKey = useRef<CryptoKey | null>(null)
 
     function addRemoteStream(peerId: string, consumer: any) {
-        // Never add our own stream as remote
         if (peerId === myPeerId.current) return
         const stream = new MediaStream([consumer.track])
         setRemoteStreams(prev => {
@@ -60,9 +59,7 @@ export default function App() {
     }
 
     async function handleNewProducer(producerId: string, peerId: string) {
-        // Never consume our own producers
         if (peerId === myPeerId.current) return
-
         if (!isReady.current) {
             pendingProducers.current.push({ producerId, peerId })
             return
@@ -70,46 +67,6 @@ export default function App() {
         await sendRoomKeyToPeer(peerId)
         const consumer = await consumeProducer(producerId, currentRoomId.current, send)
         addRemoteStream(peerId, consumer)
-    }
-
-    async function attachEncryption(key: CryptoKey) {
-        const pc = getSendPC()
-        if (!pc) { console.warn("No send PC for encryption"); return }
-        for (const sender of pc.getSenders()) {
-            if (!sender.track) continue
-            try {
-                // @ts-ignore
-                const { readable, writable } = sender.createEncodedStreams()
-                const transform = new TransformStream({
-                    transform: async (chunk: any, controller) => {
-                        try { chunk.data = await encryptPacket(key, chunk.data) }
-                        catch { /* pass through on error */ }
-                        controller.enqueue(chunk)
-                    }
-                })
-                readable.pipeThrough(transform).pipeTo(writable)
-            } catch (e) { console.warn("Encrypt attach failed:", e) }
-        }
-    }
-
-    async function attachDecryption(key: CryptoKey) {
-        const pc = getRecvPC()
-        if (!pc) { console.warn("No recv PC for decryption"); return }
-        for (const receiver of pc.getReceivers()) {
-            if (!receiver.track) continue
-            try {
-                // @ts-ignore
-                const { readable, writable } = receiver.createEncodedStreams()
-                const transform = new TransformStream({
-                    transform: async (chunk: any, controller) => {
-                        try { chunk.data = await decryptPacket(key, chunk.data) }
-                        catch { /* pass through on error */ }
-                        controller.enqueue(chunk)
-                    }
-                })
-                readable.pipeThrough(transform).pipeTo(writable)
-            } catch (e) { console.warn("Decrypt attach failed:", e) }
-        }
     }
 
     async function joinRoom(id: string) {
@@ -123,11 +80,7 @@ export default function App() {
         // Step 1: Connect WebSocket
         await connect(WS)
 
-        // ── CRITICAL: Register ALL waitFor resolvers and persistent handlers
-        // BEFORE sending join-room. Server responds immediately.
-        // If we send first, messages arrive before resolvers exist → lost forever.
-
-        // Persistent handlers (fire multiple times)
+        // Register ALL handlers BEFORE sending join-room
         on("new-producer", (msg) => handleNewProducer(msg.producerId, msg.peerId))
         on("peer-left", (msg) => {
             setRemoteStreams(prev => prev.filter(s => s.peerId !== msg.peerId))
@@ -136,10 +89,10 @@ export default function App() {
             await sendRoomKeyToPeer(msg.peerId)
         })
 
-        // Step 2: Send join-room AFTER resolvers are ready
+        // Step 2: Join room
         send({ type: "join-room", roomId: id })
 
-        // Step 3: Wait for our peerId
+        // Step 3: Get peerId
         const joinedMsg = await waitFor("joined-room")
         myPeerId.current = joinedMsg.peerId
 
@@ -156,7 +109,7 @@ export default function App() {
         const capMsg = await waitFor("router-rtp-capabilities")
         await initDevice(capMsg.rtpCapabilities)
 
-        // Step 6: Create both transports sequentially
+        // Step 6: Create transports with encodedInsertableStreams: true
         setStatus("creating transports...")
         send({ type: "create-transport", roomId: id, direction: "send" })
         const sendMsg = await waitFor("transport-created")
@@ -169,11 +122,9 @@ export default function App() {
         // Step 7: Get or receive room key
         setStatus("exchanging keys...")
         if (pendingProducers.current.length === 0) {
-            // First peer in room — generate key
             roomKey.current = await generateRoomKey()
             console.log("Generated room key (first peer)")
         } else {
-            // Not first — request key from existing peers
             send({ type: "request-key" })
             const keyMsg = await waitFor("key-exchange-received")
             const senderRes = await fetch(`${API}/keys/${keyMsg.fromPeerId}`)
@@ -184,17 +135,18 @@ export default function App() {
             console.log("Received and decrypted room key")
         }
 
-        // Step 8: Get media and produce
+        // Step 8: Inject room key into mediasoupClient
+        // This must happen BEFORE produceStream so encryption attaches at creation time
+        setRoomKey(roomKey.current)
+        setE2eeActive(true)
+
+        // Step 9: Get media and produce — encryption attaches automatically
         setStatus("getting camera...")
         const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
         if (localVideoRef.current) localVideoRef.current.srcObject = stream
         await produceStream(stream)
 
-        // Step 9: Attach encryption to outgoing streams
-        await attachEncryption(roomKey.current)
-        setE2eeActive(true)
-
-        // Step 10: Flush pending producers
+        // Step 10: Flush pending producers — decryption attaches automatically
         isReady.current = true
         for (const { producerId, peerId } of pendingProducers.current) {
             if (peerId === myPeerId.current) continue
@@ -203,9 +155,6 @@ export default function App() {
             addRemoteStream(peerId, consumer)
         }
         pendingProducers.current = []
-
-        // Step 11: Attach decryption to incoming streams
-        await attachDecryption(roomKey.current)
 
         setStatus(`connected — ${id}`)
     }
@@ -249,7 +198,7 @@ export default function App() {
             </h2>
 
             {!connected && (
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                     <button onClick={handleCreate}>Create Room</button>
                     <span>or</span>
                     <input
