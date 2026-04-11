@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from "react"
 import { connect, on, send } from "./lib/socket"
 import {
     initDevice, setupTransport, produceStream,
-    consumeProducer, waitFor, initE2eeWorker
+    consumeProducer, waitFor, initE2eeWorker,
+    toggleMic, toggleCamera
 } from "./lib/mediasoupClient"
 import {
     generateKeyPair, exportPublicKey,
@@ -27,6 +28,10 @@ export default function App() {
     const [inputRoomId, setInputRoomId] = useState("")
     const [e2eeActive, setE2eeActive] = useState(false)
 
+    // Self mute controls
+    const [micOn, setMicOn] = useState(true)
+    const [camOn, setCamOn] = useState(true)
+
     const pendingProducers = useRef<Array<{ producerId: string; peerId: string }>>([])
     const isReady = useRef(false)
     const currentRoomId = useRef("")
@@ -37,16 +42,15 @@ export default function App() {
 
     function addRemoteTrack(peerId: string, consumer: any) {
         if (peerId === myPeerId.current) return
-        
+
         let stream = remoteStreamsRef.current.get(peerId)
         if (!stream) {
             stream = new MediaStream()
             remoteStreamsRef.current.set(peerId, stream)
         }
-        
+
         stream.addTrack(consumer.track)
-        
-        // Trigger re-render with updated streams
+
         setRemoteStreams(
             Array.from(remoteStreamsRef.current.entries())
                 .map(([peerId, stream]) => ({ peerId, stream }))
@@ -84,13 +88,9 @@ export default function App() {
         setRoomId(id)
         setStatus("connecting...")
 
-        // Step 0: Generate ECDH key pair
         keyPair.current = await generateKeyPair()
-
-        // Step 1: Connect WebSocket
         await connect(WS)
 
-        // Register ALL handlers BEFORE sending join-room
         on("new-producer", (msg) => handleNewProducer(msg.producerId, msg.peerId))
         on("peer-left", (msg) => {
             remoteStreamsRef.current.delete(msg.peerId)
@@ -100,14 +100,11 @@ export default function App() {
             await sendRoomKeyToPeer(msg.peerId)
         })
 
-        // Step 2: Join room
         send({ type: "join-room", roomId: id })
 
-        // Step 3: Get peerId
         const joinedMsg = await waitFor("joined-room")
         myPeerId.current = joinedMsg.peerId
 
-        // Step 4: Register public key
         const publicKeyBase64 = await exportPublicKey(keyPair.current.publicKey)
         await fetch(`${API}/keys/${myPeerId.current}`, {
             method: "POST",
@@ -115,12 +112,10 @@ export default function App() {
             body: JSON.stringify({ publicKey: publicKeyBase64 })
         })
 
-        // Step 5: Load device
         setStatus("loading device...")
         const capMsg = await waitFor("router-rtp-capabilities")
         await initDevice(capMsg.rtpCapabilities)
 
-        // Step 6: Create transports with encodedInsertableStreams: true
         setStatus("creating transports...")
         send({ type: "create-transport", roomId: id, direction: "send" })
         const sendMsg = await waitFor("transport-created")
@@ -130,11 +125,9 @@ export default function App() {
         const recvMsg = await waitFor("transport-created")
         setupTransport(recvMsg, send, id)
 
-        // Step 7: Get or receive room key
         setStatus("exchanging keys...")
         if (pendingProducers.current.length === 0) {
             roomKey.current = await generateRoomKey()
-            console.log("Generated room key (first peer)")
         } else {
             send({ type: "request-key" })
             const keyMsg = await waitFor("key-exchange-received")
@@ -143,21 +136,16 @@ export default function App() {
             const senderPub = await importPublicKey(senderBase64)
             const shared = await deriveSharedKey(keyPair.current.privateKey, senderPub)
             roomKey.current = await decryptRoomKey(shared, keyMsg.encryptedRoomKey)
-            console.log("Received and decrypted room key")
         }
 
-        // Step 8: Inject room key into mediasoupClient
-        // This must happen BEFORE produceStream so encryption attaches at creation time
         initE2eeWorker(roomKey.current)
         setE2eeActive(true)
 
-        // Step 9: Get media and produce — encryption attaches automatically
         setStatus("getting camera...")
         const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
         if (localVideoRef.current) localVideoRef.current.srcObject = stream
         await produceStream(stream)
 
-        // Step 10: Flush pending producers — decryption attaches automatically
         isReady.current = true
         for (const { producerId, peerId } of pendingProducers.current) {
             if (peerId === myPeerId.current) continue
@@ -236,16 +224,38 @@ export default function App() {
                 </p>
             )}
 
+            {/* Self controls — only show when connected */}
+            {connected && (
+                <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                    <button onClick={() => {
+                        toggleMic(!micOn)
+                        setMicOn(!micOn)
+                    }}>
+                        {micOn ? "🎤 Mute" : "🔇 Unmute"}
+                    </button>
+                    <button onClick={() => {
+                        toggleCamera(!camOn)
+                        setCamOn(!camOn)
+                    }}>
+                        {camOn ? "📷 Stop Camera" : "📷 Start Camera"}
+                    </button>
+                </div>
+            )}
+
             <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 20 }}>
+                {/* Local video */}
                 <div>
                     <video
                         ref={localVideoRef}
                         autoPlay muted playsInline
                         style={{ width: 300, height: 200, background: "#000", borderRadius: 8 }}
                     />
-                    <p style={{ textAlign: "center", fontSize: 12, color: "#888" }}>You</p>
+                    <p style={{ textAlign: "center", fontSize: 12, color: "#888" }}>
+                        You {!micOn && "🔇"} {!camOn && "📷"}
+                    </p>
                 </div>
 
+                {/* Remote peers */}
                 {remoteStreams.map(({ peerId, stream }) => (
                     <RemoteVideo key={peerId} peerId={peerId} stream={stream} />
                 ))}
@@ -256,9 +266,13 @@ export default function App() {
 
 function RemoteVideo({ peerId, stream }: { peerId: string; stream: MediaStream }) {
     const ref = useRef<HTMLVideoElement>(null)
+    const [audioOn, setAudioOn] = useState(true)
+    const [videoOn, setVideoOn] = useState(true)
+
     useEffect(() => {
         if (ref.current) ref.current.srcObject = stream
     }, [stream])
+
     return (
         <div>
             <video
@@ -266,6 +280,20 @@ function RemoteVideo({ peerId, stream }: { peerId: string; stream: MediaStream }
                 autoPlay playsInline
                 style={{ width: 300, height: 200, background: "#000", borderRadius: 8 }}
             />
+            <div style={{ display: "flex", justifyContent: "center", gap: 8, marginTop: 4 }}>
+                <button onClick={() => {
+                    stream.getAudioTracks().forEach(t => t.enabled = !audioOn)
+                    setAudioOn(!audioOn)
+                }}>
+                    {audioOn ? "🔊" : "🔇"}
+                </button>
+                <button onClick={() => {
+                    stream.getVideoTracks().forEach(t => t.enabled = !videoOn)
+                    setVideoOn(!videoOn)
+                }}>
+                    {videoOn ? "📷" : "🚫"}
+                </button>
+            </div>
             <p style={{ textAlign: "center", fontSize: 12, color: "#888" }}>
                 {peerId.slice(0, 8)}
             </p>

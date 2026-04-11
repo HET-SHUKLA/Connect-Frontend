@@ -6,21 +6,33 @@ import { exportKey } from "./crypto"
 let device: Device | null = null
 let sendTransport: Transport | null = null
 let recvTransport: Transport | null = null
-
-// The shared worker instance
 let e2eeWorker: Worker | null = null
+
+// Store producers so we can pause/resume them
+const producers: Map<string, any> = new Map()
 
 export function initE2eeWorker(roomKey: CryptoKey) {
     e2eeWorker = new Worker("/e2eeWorker.js")
-    
-    // Export key to raw bytes and send to worker
     exportKey(roomKey).then(rawKey => {
         e2eeWorker!.postMessage({ type: "set-key", rawKey }, [rawKey])
     })
-    
     console.log("E2EE worker initialized")
 }
 
+// ─── Mute controls ────────────────────────────────────────────────────────
+export function toggleMic(enabled: boolean) {
+    const producer = producers.get("audio")
+    if (!producer) return
+    enabled ? producer.resume() : producer.pause()
+}
+
+export function toggleCamera(enabled: boolean) {
+    const producer = producers.get("video")
+    if (!producer) return
+    enabled ? producer.resume() : producer.pause()
+}
+
+// ─── Transforms ───────────────────────────────────────────────────────────
 function attachSenderTransform(sender: RTCRtpSender) {
     if (!e2eeWorker) return
     try {
@@ -57,6 +69,15 @@ export function waitFor(type: string): Promise<any> {
         const existing = resolvers.get(type) ?? []
         resolvers.set(type, [...existing, resolve])
     })
+}
+
+export function resetState() {
+    device = null
+    sendTransport = null
+    recvTransport = null
+    e2eeWorker = null
+    producers.clear()
+    resolvers.clear()
 }
 
 // ─── Device ───────────────────────────────────────────────────────────────
@@ -104,10 +125,12 @@ export function setupTransport(
             } catch (err) { errback(err as Error) }
         })
 
-        // Intercept produce to attach transform immediately
+        // Intercept produce to store producer + attach transform
         const originalProduce = transport.produce.bind(transport)
         transport.produce = async (options: any) => {
             const producer = await originalProduce(options)
+            // Store by kind ("audio" or "video") for mute controls
+            producers.set(producer.track.kind, producer)
             const sender = (producer as any)._rtpSender
             if (sender) attachSenderTransform(sender)
             return producer
@@ -154,9 +177,10 @@ export async function consumeProducer(
         rtpParameters: msg.rtpParameters,
     })
 
-    // Attach decrypt transform immediately at consumer creation
     const receiver = (consumer as any)._rtpReceiver
     if (receiver) attachReceiverTransform(receiver)
+
+    await consumer.resume()
 
     return consumer
 }
