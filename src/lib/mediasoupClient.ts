@@ -2,14 +2,12 @@ import { Device } from "mediasoup-client"
 import type { Transport, Consumer } from "mediasoup-client/types"
 import type { TransportCreatedMessage } from "../types"
 
-// ─── State ────────────────────────────────────────────────────────────────
 let device: Device | null = null
 let sendTransport: Transport | null = null
 let recvTransport: Transport | null = null
 const consumers: Map<string, Consumer> = new Map()
 
 // ─── waitFor ──────────────────────────────────────────────────────────────
-// Simple resolver map — works exactly like the HTML file version
 type Resolver = (msg: any) => void
 const resolvers: Map<string, Resolver[]> = new Map()
 
@@ -32,6 +30,17 @@ export function waitFor(type: string): Promise<any> {
 export async function initDevice(rtpCapabilities: any) {
     device = new Device()
     await device.load({ routerRtpCapabilities: rtpCapabilities })
+}
+
+// ─── Expose underlying PeerConnections for insertable streams ─────────────
+export function getSendPC(): RTCPeerConnection | null {
+    if (!sendTransport) return null
+    return (sendTransport as any)._handler._pc ?? null
+}
+
+export function getRecvPC(): RTCPeerConnection | null {
+    if (!recvTransport) return null
+    return (recvTransport as any)._handler._pc ?? null
 }
 
 // ─── Transports ───────────────────────────────────────────────────────────
@@ -60,9 +69,7 @@ export function setupTransport(
         try {
             sendFn({ type: "connect-transport", transportId: transport.id, dtlsParameters })
             callback()
-        } catch (err) {
-            errback(err as Error)
-        }
+        } catch (err) { errback(err as Error) }
     })
 
     if (message.direction === "send") {
@@ -70,9 +77,7 @@ export function setupTransport(
             try {
                 sendFn({ type: "produce", roomId, kind, rtpParameters })
                 waitFor("produce-created").then(msg => callback({ id: msg.producerId }))
-            } catch (err) {
-                errback(err as Error)
-            }
+            } catch (err) { errback(err as Error) }
         })
         sendTransport = transport
     } else {

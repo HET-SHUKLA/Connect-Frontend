@@ -81,6 +81,27 @@ export type RouterRtpCapabilitiesMessage = {
     rtpCapabilities: RtpCapabilities;
 }
 
+export type RequestKeyMessage = {
+    type: "request-key"
+}
+
+export type KeyExchangeMessage = {
+    type: "key-exchange";
+    targetPeerId: string;
+    encryptedRoomKey: string
+}
+
+export type KeyRequestedMessage = {
+    type: "key-requested";
+    peerId: string
+}
+
+export type KeyExchangeReceived = {
+    type: "key-exchange-received";
+    fromPeerId: string;
+    encryptedRoomKey: string
+}
+
 // Messages that flow CLIENT → SERVER
 export type ClientMessage = 
     | JoinRoomMessage
@@ -88,7 +109,8 @@ export type ClientMessage =
     | ConnectTransport
     | Produce
     | Consume
-    | RouterRtpCapabilitiesMessage;
+    | KeyExchangeMessage
+    | RequestKeyMessage;
 
 // Messages that flow SERVER → CLIENT  
 export type ServerMessage =
@@ -98,4 +120,6 @@ export type ServerMessage =
     | ConsumerCreated
     | JoinedRoomMessage
     | PeerLeft
-    | RouterRtpCapabilitiesMessage;
+    | RouterRtpCapabilitiesMessage
+    | KeyExchangeReceived
+    | KeyRequestedMessage;
