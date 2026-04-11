@@ -33,14 +33,24 @@ export default function App() {
     const myPeerId = useRef("")
     const keyPair = useRef<CryptoKeyPair | null>(null)
     const roomKey = useRef<CryptoKey | null>(null)
+    const remoteStreamsRef = useRef<Map<string, MediaStream>>(new Map())
 
-    function addRemoteStream(peerId: string, consumer: any) {
+    function addRemoteTrack(peerId: string, consumer: any) {
         if (peerId === myPeerId.current) return
-        const stream = new MediaStream([consumer.track])
-        setRemoteStreams(prev => {
-            if (prev.find(s => s.peerId === peerId)) return prev
-            return [...prev, { peerId, stream }]
-        })
+        
+        let stream = remoteStreamsRef.current.get(peerId)
+        if (!stream) {
+            stream = new MediaStream()
+            remoteStreamsRef.current.set(peerId, stream)
+        }
+        
+        stream.addTrack(consumer.track)
+        
+        // Trigger re-render with updated streams
+        setRemoteStreams(
+            Array.from(remoteStreamsRef.current.entries())
+                .map(([peerId, stream]) => ({ peerId, stream }))
+        )
     }
 
     async function sendRoomKeyToPeer(targetPeerId: string) {
@@ -66,7 +76,7 @@ export default function App() {
         }
         await sendRoomKeyToPeer(peerId)
         const consumer = await consumeProducer(producerId, currentRoomId.current, send)
-        addRemoteStream(peerId, consumer)
+        addRemoteTrack(peerId, consumer)
     }
 
     async function joinRoom(id: string) {
@@ -83,6 +93,7 @@ export default function App() {
         // Register ALL handlers BEFORE sending join-room
         on("new-producer", (msg) => handleNewProducer(msg.producerId, msg.peerId))
         on("peer-left", (msg) => {
+            remoteStreamsRef.current.delete(msg.peerId)
             setRemoteStreams(prev => prev.filter(s => s.peerId !== msg.peerId))
         })
         on("key-requested", async (msg) => {
@@ -152,7 +163,7 @@ export default function App() {
             if (peerId === myPeerId.current) continue
             await sendRoomKeyToPeer(peerId)
             const consumer = await consumeProducer(producerId, id, send)
-            addRemoteStream(peerId, consumer)
+            addRemoteTrack(peerId, consumer)
         }
         pendingProducers.current = []
 
