@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react"
 import { connect, on, send } from "./lib/socket"
 import {
     initDevice, setupTransport, produceStream,
-    consumeProducer, waitFor, setRoomKey
+    consumeProducer, waitFor, initE2eeWorker
 } from "./lib/mediasoupClient"
 import {
     generateKeyPair, exportPublicKey,
@@ -11,8 +11,8 @@ import {
 } from "./lib/keyExchange"
 import { generateRoomKey } from "./lib/crypto"
 
-const API = "http://localhost:8080/api"
-const WS  = "ws://localhost:8080"
+const API = "http://192.168.31.130:8080/api"
+const WS  = "ws://192.168.31.130:8080"
 
 interface RemoteStream {
     peerId: string
@@ -137,7 +137,7 @@ export default function App() {
 
         // Step 8: Inject room key into mediasoupClient
         // This must happen BEFORE produceStream so encryption attaches at creation time
-        setRoomKey(roomKey.current)
+        initE2eeWorker(roomKey.current)
         setE2eeActive(true)
 
         // Step 9: Get media and produce — encryption attaches automatically

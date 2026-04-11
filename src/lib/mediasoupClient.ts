@@ -1,17 +1,46 @@
 import { Device } from "mediasoup-client"
 import type { Transport, Consumer } from "mediasoup-client/types"
 import type { TransportCreatedMessage } from "../types"
-import { encryptPacket, decryptPacket } from "./crypto"
+import { exportKey } from "./crypto"
 
 let device: Device | null = null
 let sendTransport: Transport | null = null
 let recvTransport: Transport | null = null
 
-// Room key injected from App.tsx after key exchange
-let activeRoomKey: CryptoKey | null = null
+// The shared worker instance
+let e2eeWorker: Worker | null = null
 
-export function setRoomKey(key: CryptoKey) {
-    activeRoomKey = key
+export function initE2eeWorker(roomKey: CryptoKey) {
+    e2eeWorker = new Worker("/e2eeWorker.js")
+    
+    // Export key to raw bytes and send to worker
+    exportKey(roomKey).then(rawKey => {
+        e2eeWorker!.postMessage({ type: "set-key", rawKey }, [rawKey])
+    })
+    
+    console.log("E2EE worker initialized")
+}
+
+function attachSenderTransform(sender: RTCRtpSender) {
+    if (!e2eeWorker) return
+    try {
+        // @ts-ignore
+        sender.transform = new RTCRtpScriptTransform(e2eeWorker, { operation: "encrypt" })
+        console.log("✓ Encrypt transform attached")
+    } catch (e) {
+        console.warn("RTCRtpScriptTransform not supported:", e)
+    }
+}
+
+function attachReceiverTransform(receiver: RTCRtpReceiver) {
+    if (!e2eeWorker) return
+    try {
+        // @ts-ignore
+        receiver.transform = new RTCRtpScriptTransform(e2eeWorker, { operation: "decrypt" })
+        console.log("✓ Decrypt transform attached")
+    } catch (e) {
+        console.warn("RTCRtpScriptTransform not supported:", e)
+    }
 }
 
 // ─── waitFor ──────────────────────────────────────────────────────────────
@@ -20,9 +49,7 @@ const resolvers: Map<string, Resolver[]> = new Map()
 
 export function resolveMessage(type: string, msg: any) {
     const waiting = resolvers.get(type)
-    if (waiting && waiting.length > 0) {
-        waiting.shift()!(msg)
-    }
+    if (waiting && waiting.length > 0) waiting.shift()!(msg)
 }
 
 export function waitFor(type: string): Promise<any> {
@@ -38,47 +65,6 @@ export async function initDevice(rtpCapabilities: any) {
     await device.load({ routerRtpCapabilities: rtpCapabilities })
 }
 
-// ─── Insertable streams helpers ───────────────────────────────────────────
-function attachSenderEncryption(sender: RTCRtpSender) {
-    if (!activeRoomKey) return
-    const key = activeRoomKey
-    try {
-        // @ts-ignore
-        const { readable, writable } = sender.createEncodedStreams()
-        const transform = new TransformStream({
-            transform: async (chunk: any, controller) => {
-                try { chunk.data = await encryptPacket(key, chunk.data) }
-                catch { /* pass through */ }
-                controller.enqueue(chunk)
-            }
-        })
-        readable.pipeThrough(transform).pipeTo(writable)
-        console.log("✓ Encryption attached to sender")
-    } catch (e) {
-        console.warn("Sender encryption failed:", e)
-    }
-}
-
-function attachReceiverDecryption(receiver: RTCRtpReceiver) {
-    if (!activeRoomKey) return
-    const key = activeRoomKey
-    try {
-        // @ts-ignore
-        const { readable, writable } = receiver.createEncodedStreams()
-        const transform = new TransformStream({
-            transform: async (chunk: any, controller) => {
-                try { chunk.data = await decryptPacket(key, chunk.data) }
-                catch { /* pass through */ }
-                controller.enqueue(chunk)
-            }
-        })
-        readable.pipeThrough(transform).pipeTo(writable)
-        console.log("✓ Decryption attached to receiver")
-    } catch (e) {
-        console.warn("Receiver decryption failed:", e)
-    }
-}
-
 // ─── Transports ───────────────────────────────────────────────────────────
 export function setupTransport(
     message: TransportCreatedMessage,
@@ -87,20 +73,21 @@ export function setupTransport(
 ): Transport {
     if (!device) throw new Error("Device not initialized")
 
-    // encodedInsertableStreams: true is the critical flag
-    // Must be set at transport creation — cannot be changed later
-    const transportOptions = {
-        id: message.id,
-        iceParameters: message.iceParameters,
-        iceCandidates: message.iceCandidates,
-        dtlsParameters: message.dtlsParameters,
-        iceServers: message.iceServers,
-        encodedInsertableStreams: true,
-    }
-
     const transport = message.direction === "send"
-        ? device.createSendTransport(transportOptions)
-        : device.createRecvTransport(transportOptions)
+        ? device.createSendTransport({
+            id: message.id,
+            iceParameters: message.iceParameters,
+            iceCandidates: message.iceCandidates,
+            dtlsParameters: message.dtlsParameters,
+            iceServers: message.iceServers,
+        })
+        : device.createRecvTransport({
+            id: message.id,
+            iceParameters: message.iceParameters,
+            iceCandidates: message.iceCandidates,
+            dtlsParameters: message.dtlsParameters,
+            iceServers: message.iceServers,
+        })
 
     transport.on("connect", ({ dtlsParameters }, callback, errback) => {
         try {
@@ -117,14 +104,12 @@ export function setupTransport(
             } catch (err) { errback(err as Error) }
         })
 
-        // When a new sender is created, attach encryption immediately
-        transport.on("producedata", () => {})
+        // Intercept produce to attach transform immediately
         const originalProduce = transport.produce.bind(transport)
         transport.produce = async (options: any) => {
             const producer = await originalProduce(options)
-            // Access underlying RTCRtpSender
             const sender = (producer as any)._rtpSender
-            if (sender) attachSenderEncryption(sender)
+            if (sender) attachSenderTransform(sender)
             return producer
         }
 
@@ -169,9 +154,9 @@ export async function consumeProducer(
         rtpParameters: msg.rtpParameters,
     })
 
-    // Attach decryption immediately at consumer creation
+    // Attach decrypt transform immediately at consumer creation
     const receiver = (consumer as any)._rtpReceiver
-    if (receiver) attachReceiverDecryption(receiver)
+    if (receiver) attachReceiverTransform(receiver)
 
     return consumer
 }

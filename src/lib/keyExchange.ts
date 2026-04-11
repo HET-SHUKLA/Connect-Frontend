@@ -51,7 +51,7 @@ export async function decryptRoomKey(sharedKey: CryptoKey, encryptedBase64: stri
     return crypto.subtle.importKey(
         "raw", rawRoomKey,
         { name: "AES-GCM", length: 256 },
-        false,
+        true,
         ["encrypt", "decrypt"]
     )
 }
