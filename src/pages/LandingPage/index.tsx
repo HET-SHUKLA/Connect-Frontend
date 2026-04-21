@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, KeyboardEvent } from 'react'
+import { useState, useRef, useEffect, type KeyboardEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useUser } from '../../context/UserContext'
 import { Plus, LogIn, ArrowRight, Lock } from 'lucide-react'
