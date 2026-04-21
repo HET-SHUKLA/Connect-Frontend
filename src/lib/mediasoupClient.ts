@@ -134,9 +134,7 @@ export function setupTransport(
                 dtlsParameters
             })
 
-            waitFor("transport-connected")
-                .then(() => callback())
-                .catch(err => errback(err))
+            callback();
         } catch (err) { errback(err as Error) }
     })
 
