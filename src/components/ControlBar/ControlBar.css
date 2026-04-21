@@ -1,0 +1,195 @@
+.control-bar {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(760px, calc(100vw - 32px));
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+
+  padding: 10px 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
+  border-radius: var(--r-full);
+  backdrop-filter: blur(24px);
+  box-shadow: var(--shadow-lg);
+
+  animation: slideInUp 0.4s var(--t-spring) both;
+  z-index: 50;
+}
+
+/* Room code (left) */
+.control-bar__room {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  min-width: 0;
+}
+
+.control-bar__room-code {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+}
+
+.control-bar__copy {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--bg-glass);
+  color: var(--text-secondary);
+  transition: background var(--t-fast), color var(--t-fast);
+}
+
+.control-bar__copy:hover {
+  background: var(--bg-glass-md);
+  color: var(--text-primary);
+}
+
+.control-bar__e2ee {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--accent);
+  background: var(--accent-dim);
+  padding: 3px 8px;
+  border-radius: var(--r-full);
+  letter-spacing: 0.04em;
+}
+
+/* Center buttons */
+.control-bar__center {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.control-bar__divider {
+  width: 1px;
+  height: 28px;
+  background: var(--border-default);
+  margin: 0 4px;
+}
+
+.control-bar__spacer {
+  /* Mirror the left side width for center alignment */
+  flex: 1;
+  min-width: 80px;
+}
+
+/* ─── Button ──────────────────────────────────────────────────────────── */
+.control-btn {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 12px;
+  border-radius: var(--r-lg);
+  background: var(--bg-glass);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  transition: background var(--t-fast), border-color var(--t-fast),
+              color var(--t-fast), transform var(--t-fast);
+  white-space: nowrap;
+  min-width: 60px;
+}
+
+.control-btn:hover {
+  background: var(--bg-glass-md);
+  border-color: var(--border-default);
+  transform: translateY(-1px);
+}
+
+.control-btn:active { transform: translateY(0) scale(0.97); }
+
+.control-btn--muted {
+  background: var(--danger-dim);
+  border-color: rgba(248, 113, 113, 0.2);
+  color: var(--danger);
+}
+
+.control-btn--muted:hover {
+  background: rgba(248, 113, 113, 0.18);
+}
+
+.control-btn__label {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  line-height: 1;
+}
+
+.control-btn--muted .control-btn__label { color: var(--danger); opacity: 0.8; }
+
+/* Leave button */
+.control-btn--leave {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  color: var(--danger);
+  padding: 8px 14px;
+  border-radius: var(--r-lg);
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 60px;
+}
+
+.control-btn--leave:hover {
+  background: rgba(239, 68, 68, 0.25);
+  border-color: rgba(239, 68, 68, 0.4);
+  transform: translateY(-1px);
+}
+
+.control-btn--leave .control-btn__label {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--danger);
+  opacity: 0.8;
+}
+
+/* Badge */
+.control-btn__badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  background: var(--accent);
+  color: var(--bg-void);
+  border-radius: var(--r-full);
+  font-size: 9px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+/* Mobile — hide labels */
+@media (max-width: 500px) {
+  .control-bar {
+    padding: 8px 12px;
+    bottom: 16px;
+  }
+
+  .control-btn__label { display: none; }
+  .control-bar__room-code { display: none; }
+  .control-bar__e2ee { display: none; }
+  .control-btn { min-width: 44px; padding: 8px; }
+  .control-btn--leave { min-width: 44px; padding: 8px; }
+}

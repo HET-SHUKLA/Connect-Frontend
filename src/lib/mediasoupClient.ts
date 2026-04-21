@@ -1,5 +1,5 @@
 import { Device } from "mediasoup-client"
-import type { Transport, Consumer } from "mediasoup-client/types"
+import type { Transport, Consumer, Producer, ProducerOptions, AppData } from "mediasoup-client/types"
 import type { TransportCreatedMessage } from "../types"
 import { exportKey } from "./crypto"
 
@@ -8,15 +8,16 @@ let sendTransport: Transport | null = null
 let recvTransport: Transport | null = null
 let e2eeWorker: Worker | null = null
 
-// Store producers so we can pause/resume them
+// Store producers so we can pause/resume them for mute/camera toggles
 const producers: Map<string, any> = new Map()
 
+// ─── E2EE worker ──────────────────────────────────────────────────────────
 export function initE2eeWorker(roomKey: CryptoKey) {
     e2eeWorker = new Worker("/e2eeWorker.js")
     exportKey(roomKey).then(rawKey => {
         e2eeWorker!.postMessage({ type: "set-key", rawKey }, [rawKey])
     })
-    console.log("E2EE worker initialized")
+    console.log("[E2EE] Worker initialized")
 }
 
 // ─── Mute controls ────────────────────────────────────────────────────────
@@ -38,9 +39,9 @@ function attachSenderTransform(sender: RTCRtpSender) {
     try {
         // @ts-ignore
         sender.transform = new RTCRtpScriptTransform(e2eeWorker, { operation: "encrypt" })
-        console.log("✓ Encrypt transform attached")
+        console.log("[E2EE] ✓ Encrypt transform attached")
     } catch (e) {
-        console.warn("RTCRtpScriptTransform not supported:", e)
+        console.warn("[E2EE] RTCRtpScriptTransform not available:", e)
     }
 }
 
@@ -49,13 +50,24 @@ function attachReceiverTransform(receiver: RTCRtpReceiver) {
     try {
         // @ts-ignore
         receiver.transform = new RTCRtpScriptTransform(e2eeWorker, { operation: "decrypt" })
-        console.log("✓ Decrypt transform attached")
+        console.log("[E2EE] ✓ Decrypt transform attached")
     } catch (e) {
-        console.warn("RTCRtpScriptTransform not supported:", e)
+        console.warn("[E2EE] RTCRtpScriptTransform not available:", e)
     }
 }
 
 // ─── waitFor ──────────────────────────────────────────────────────────────
+// Simple FIFO promise queue — no timeouts, no caching.
+//
+// Root cause of "stuck at Loading device…" on first click:
+// The previous version added a 5-second timeout and a cachedRtpCapabilities
+// fast-path. If the timeout fired before the message arrived, the resolver
+// was removed and the promise rejected — but cachedRtpCapabilities was still
+// set by resolveMessage() when the message eventually arrived. The second
+// click then fast-pathed through the cache and appeared to "work". Removing
+// the cache and the timeout eliminates this entirely. If the server never
+// responds, the connection error or WS close will propagate instead.
+
 type Resolver = (msg: any) => void
 const resolvers: Map<string, Resolver[]> = new Map()
 
@@ -71,11 +83,15 @@ export function waitFor(type: string): Promise<any> {
     })
 }
 
+// ─── Reset — MUST be called on leave ──────────────────────────────────────
+// Clears all mediasoup state so the next session starts clean.
+// Not calling this is the root cause of ghost-peer and double-handler bugs.
 export function resetState() {
-    device = null
+    device        = null
     sendTransport = null
     recvTransport = null
-    e2eeWorker = null
+    e2eeWorker?.terminate()
+    e2eeWorker    = null
     producers.clear()
     resolvers.clear()
 }
@@ -112,8 +128,15 @@ export function setupTransport(
 
     transport.on("connect", ({ dtlsParameters }, callback, errback) => {
         try {
-            sendFn({ type: "connect-transport", transportId: transport.id, dtlsParameters })
-            callback()
+            sendFn({
+                type: "connect-transport",
+                transportId: transport.id,
+                dtlsParameters
+            })
+
+            waitFor("transport-connected")
+                .then(() => callback())
+                .catch(err => errback(err))
         } catch (err) { errback(err as Error) }
     })
 
@@ -125,13 +148,18 @@ export function setupTransport(
             } catch (err) { errback(err as Error) }
         })
 
-        // Intercept produce to store producer + attach transform
-        const originalProduce = transport.produce.bind(transport)
-        transport.produce = async (options: any) => {
+        const originalProduce = transport.produce.bind(transport) as
+            <ProducerAppData extends AppData = AppData>(
+                options?: ProducerOptions<ProducerAppData>
+            ) => Promise<Producer<ProducerAppData>>
+
+        transport.produce = async function <ProducerAppData extends AppData = AppData>(
+            options?: ProducerOptions<ProducerAppData>
+        ): Promise<Producer<ProducerAppData>> {
             const producer = await originalProduce(options)
-            // Store by kind ("audio" or "video") for mute controls
-            producers.set(producer.track.kind, producer)
-            const sender = (producer as any)._rtpSender
+            // Store by kind ("audio"/"video") for mute/camera toggles
+            producers.set((producer.track as MediaStreamTrack).kind, producer)
+            const sender = (producer as any)._rtpSender as RTCRtpSender | undefined
             if (sender) attachSenderTransform(sender)
             return producer
         }

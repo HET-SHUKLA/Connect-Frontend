@@ -1,73 +1,46 @@
-# React + TypeScript + Vite
+# Connect — Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+## Quick start
 
-Currently, two official plugins are available:
-
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Environment
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+Copy `.env.example` → `.env.local` and set:
 ```
+VITE_BACKEND_HOST=192.168.31.130:8080
+```
+
+If left unset, defaults to `192.168.31.130:8080`.
+
+## Project structure
+
+```
+src/
+  pages/
+    LandingPage/     # Home — create or join a room
+    MeetingPage/     # Lobby preview + full meeting UI
+  components/
+    ControlBar/      # Mic, camera, participants, leave
+    VideoTile/       # Remote participant tile
+    LocalVideo/      # PiP self-view with audio visualizer
+    ParticipantsPanel/ # Slide-in participants list
+    Toast/           # Join/leave notifications
+  context/
+    UserContext.tsx  # Persists user name across pages
+  lib/               # Unchanged — all E2EE / mediasoup logic
+  styles/
+    globals.css      # Design tokens + reset
+```
+
+## Routes
+
+| Path | Page |
+|------|------|
+| `/` | Landing — create or join |
+| `/room/:roomId` | Meeting — lobby then call |
+
+Sharing a `/room/ABCDE` link takes the recipient directly to the lobby for that room.
