@@ -25,7 +25,7 @@ import './MeetingPage.css'
 
 const BACKEND_HOST = import.meta.env.VITE_BACKEND_HOST ?? '192.168.31.130:8080'
 const API = `https://${BACKEND_HOST}/api`
-const WS  = `wss://${BACKEND_HOST}`
+const WS  = `wss://${BACKEND_HOST}/ws`
 
 type Phase = 'lobby' | 'connecting' | 'connected' | 'error'
 
