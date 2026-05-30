@@ -24,8 +24,8 @@ import Toast, { useToasts } from '../../components/Toast'
 import './MeetingPage.css'
 
 const BACKEND_HOST = import.meta.env.VITE_BACKEND_HOST ?? '192.168.31.130:8080'
-const API = `https://${BACKEND_HOST}/api`
-const WS  = `wss://${BACKEND_HOST}/ws`
+const API = `http://${BACKEND_HOST}/api`
+const WS  = `ws://${BACKEND_HOST}/ws`
 
 type Phase = 'lobby' | 'connecting' | 'connected' | 'error'
 
@@ -382,7 +382,7 @@ export default function MeetingPage() {
               <p className="lobby__name-value">{name || 'Guest'}</p>
             </div>
 
-            <button className="lobby__join-btn" onClick={joinRoom} disabled={permissionError}>
+            <button className="lobby__join-btn" onClick={joinRoom}>
               <Wifi size={18} />
               Join Meeting
             </button>

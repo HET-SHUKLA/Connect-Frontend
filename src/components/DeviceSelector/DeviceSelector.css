@@ -1,0 +1,51 @@
+.ds-overlay {
+  position: fixed; inset: 0; z-index: 80;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(0,0,0,0.5); backdrop-filter: blur(4px);
+  animation: fadeIn 0.15s both;
+}
+
+.ds-panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
+  border-radius: var(--r-xl);
+  width: min(420px, calc(100vw - 32px));
+  box-shadow: var(--shadow-xl);
+  animation: fadeInScale 0.2s both;
+  overflow: hidden;
+}
+
+.ds-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px 20px 16px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.ds-title { font-family: var(--font-display); font-size: 15px; font-weight: 600; color: var(--text-primary); }
+.ds-close { display:flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:50%;background:var(--bg-glass);color:var(--text-secondary);transition:background var(--t-fast),color var(--t-fast); }
+.ds-close:hover { background:var(--bg-hover);color:var(--text-primary); }
+
+.ds-body { padding: 16px 20px 20px; display: flex; flex-direction: column; gap: 16px; }
+
+.ds-row { display: flex; flex-direction: column; gap: 7px; }
+.ds-row__label { display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.06em; }
+.ds-row__icon { color: var(--accent); }
+
+.ds-select {
+  width: 100%;
+  padding: 10px 12px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--r-md);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 14px;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238888b0' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 32px;
+  transition: border-color var(--t-fast);
+}
+.ds-select:focus { border-color: var(--accent); outline: none; }
+.ds-select option { background: var(--bg-elevated); }

@@ -1,4 +1,4 @@
-import { Mic, MicOff, Video, VideoOff, Users, PhoneOff, Shield, Copy, Check } from 'lucide-react'
+import { Mic, MicOff, Video, VideoOff, Users, PhoneOff, Shield, Copy, Check, Link, Settings } from 'lucide-react'
 import { useState } from 'react'
 import './ControlBar.css'
 
@@ -11,90 +11,79 @@ interface ControlBarProps {
   onToggleMic: () => void
   onToggleCam: () => void
   onToggleParticipants: () => void
+  onToggleSettings: () => void
   onLeave: () => void
 }
 
 export default function ControlBar({
-  micOn, camOn, e2eeActive, roomId,
-  participantCount,
-  onToggleMic, onToggleCam, onToggleParticipants, onLeave
+  micOn, camOn, e2eeActive, roomId, participantCount,
+  onToggleMic, onToggleCam, onToggleParticipants, onToggleSettings, onLeave
 }: ControlBarProps) {
-  const [copied, setCopied] = useState(false)
+  const [copiedCode, setCopiedCode] = useState(false)
+  const [copiedLink, setCopiedLink] = useState(false)
 
   function copyCode() {
     navigator.clipboard.writeText(roomId)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+    setCopiedCode(true)
+    setTimeout(() => setCopiedCode(false), 2000)
+  }
+
+  function copyLink() {
+    navigator.clipboard.writeText(window.location.href)
+    setCopiedLink(true)
+    setTimeout(() => setCopiedLink(false), 2000)
   }
 
   return (
     <div className="control-bar">
-      {/* Room code (left) */}
+      {/* Left — room info + share */}
       <div className="control-bar__room">
-        <span className="control-bar__room-code">{roomId}</span>
-        <button className="control-bar__copy" onClick={copyCode} title="Copy room code">
-          {copied ? <Check size={14} /> : <Copy size={14} />}
+        <button className="control-bar__share-btn" onClick={copyCode} title="Copy room code">
+          {copiedCode ? <Check size={13} /> : <Copy size={13} />}
+          <span className="control-bar__room-code">{roomId}</span>
+        </button>
+        <button className="control-bar__share-btn control-bar__share-btn--link" onClick={copyLink} title="Copy join link">
+          {copiedLink ? <Check size={13} /> : <Link size={13} />}
+          <span className="control-bar__share-label">Link</span>
         </button>
         {e2eeActive && (
           <span className="control-bar__e2ee" title="End-to-end encrypted">
-            <Shield size={12} />
-            E2EE
+            <Shield size={11} /> E2EE
           </span>
         )}
       </div>
 
-      {/* Main controls (center) */}
+      {/* Center — main controls */}
       <div className="control-bar__center">
-        <ControlButton
-          active={micOn}
-          onClick={onToggleMic}
-          icon={micOn ? <Mic size={20} /> : <MicOff size={20} />}
-          label={micOn ? 'Mute' : 'Unmute'}
-          danger={!micOn}
-        />
-        <ControlButton
-          active={camOn}
-          onClick={onToggleCam}
-          icon={camOn ? <Video size={20} /> : <VideoOff size={20} />}
-          label={camOn ? 'Stop Video' : 'Start Video'}
-          danger={!camOn}
-        />
-        <ControlButton
-          active={false}
-          onClick={onToggleParticipants}
-          icon={<Users size={20} />}
-          label="People"
-          badge={participantCount > 0 ? participantCount : undefined}
-        />
+        <CtrlBtn active={micOn} danger={!micOn} onClick={onToggleMic}
+          icon={micOn ? <Mic size={20}/> : <MicOff size={20}/>}
+          label={micOn ? 'Mute' : 'Unmute'} />
+        <CtrlBtn active={camOn} danger={!camOn} onClick={onToggleCam}
+          icon={camOn ? <Video size={20}/> : <VideoOff size={20}/>}
+          label={camOn ? 'Stop' : 'Start'} />
+        <CtrlBtn active={false} onClick={onToggleParticipants}
+          icon={<Users size={20}/>} label="People"
+          badge={participantCount > 0 ? participantCount : undefined} />
+        <CtrlBtn active={false} onClick={onToggleSettings}
+          icon={<Settings size={20}/>} label="Settings" />
         <div className="control-bar__divider" />
-        <button className="control-btn control-btn--leave" onClick={onLeave} title="Leave meeting">
-          <PhoneOff size={20} />
+        <button className="control-btn control-btn--leave" onClick={onLeave}>
+          <PhoneOff size={20}/>
           <span className="control-btn__label">Leave</span>
         </button>
       </div>
 
-      {/* Spacer to balance layout */}
       <div className="control-bar__spacer" />
     </div>
   )
 }
 
-interface ControlButtonProps {
-  active: boolean
-  onClick: () => void
-  icon: React.ReactNode
-  label: string
-  danger?: boolean
-  badge?: number
-}
-
-function ControlButton({ active, onClick, icon, label, danger, badge }: ControlButtonProps) {
+function CtrlBtn({ active, danger, onClick, icon, label, badge }: {
+  active: boolean; danger?: boolean; onClick: () => void
+  icon: React.ReactNode; label: string; badge?: number
+}) {
   return (
-    <button
-      className={`control-btn ${!active || danger ? 'control-btn--muted' : ''}`}
-      onClick={onClick}
-      title={label}
-    >
+    <button className={`control-btn ${danger ? 'control-btn--muted' : ''}`} onClick={onClick} title={label}>
       {icon}
       <span className="control-btn__label">{label}</span>
       {badge != null && <span className="control-btn__badge">{badge}</span>}

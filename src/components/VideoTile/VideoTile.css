@@ -1,3 +1,35 @@
+/* ── Wrapper (holds the wave rings outside the tile) ── */
+.video-tile-wrap {
+  position: relative;
+  /* padding gives room for wave rings to show without overlapping siblings */
+  padding: 5px;
+  border-radius: calc(var(--r-lg) + 5px);
+  --peer-color: #4ade80;
+}
+
+.video-tile-wrap--enter {
+  animation: peerJoin 0.4s var(--t-spring) both;
+}
+
+/* ── Speaking wave rings ── */
+.vt-wave {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  border: 2px solid var(--peer-color);
+  pointer-events: none;
+  animation: speakWave 1.4s ease-out infinite;
+}
+
+.vt-wave--1 { animation-delay: 0s; }
+.vt-wave--2 { animation-delay: 0.5s; opacity: 0.5; }
+
+@keyframes speakWave {
+  0%   { transform: scale(1);    opacity: 0.7; }
+  100% { transform: scale(1.06); opacity: 0; }
+}
+
+/* ── Inner tile ── */
 .video-tile {
   position: relative;
   background: var(--bg-elevated);
@@ -5,18 +37,17 @@
   overflow: hidden;
   aspect-ratio: 16 / 9;
   border: 1px solid var(--border-subtle);
+  width: 100%;
+  height: 100%;
   transition: border-color var(--t-base);
 }
 
-.video-tile:hover {
-  border-color: var(--border-default);
+.video-tile-wrap--speaking .video-tile {
+  border-color: var(--peer-color);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--peer-color) 30%, transparent);
 }
 
-.video-tile--enter {
-  animation: peerJoin 0.4s var(--t-spring) both;
-}
-
-/* Avatar */
+/* ── Avatar ── */
 .video-tile__avatar {
   position: absolute;
   inset: 0;
@@ -25,7 +56,7 @@
   justify-content: center;
   background: radial-gradient(
     ellipse at 50% 40%,
-    color-mix(in srgb, var(--avatar-color, #4ade80) 18%, transparent),
+    color-mix(in srgb, var(--avatar-color, #4ade80) 20%, transparent),
     var(--bg-elevated)
   );
   z-index: 1;
@@ -33,35 +64,27 @@
 
 .video-tile__initials {
   font-family: var(--font-display);
-  font-size: clamp(24px, 5vw, 48px);
+  font-size: clamp(22px, 4vw, 52px);
   font-weight: 600;
   color: var(--avatar-color, #4ade80);
   letter-spacing: -0.02em;
   user-select: none;
 }
 
-/* Video */
+/* ── Video ── */
 .video-tile__video {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
+  width: 100%; height: 100%;
+  object-fit: cover; display: block;
   transition: opacity var(--t-base);
 }
+.video-tile__video--hidden { opacity: 0; pointer-events: none; }
 
-.video-tile__video--hidden {
-  opacity: 0;
-  pointer-events: none;
-}
-
-/* Label bar */
+/* ── Label bar ── */
 .video-tile__label {
   position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  padding: 28px 12px 10px;
-  background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 100%);
+  bottom: 0; left: 0; right: 0;
+  padding: 24px 10px 8px;
+  background: linear-gradient(to top, rgba(0,0,0,0.72) 0%, transparent 100%);
   display: flex;
   align-items: center;
   gap: 6px;
@@ -71,9 +94,80 @@
   color: #fff;
 }
 
-.video-tile__mute-icon {
-  width: 14px;
-  height: 14px;
+.video-tile__mic-state { display: flex; align-items: center; flex-shrink: 0; }
+
+.video-tile__mic-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px; height: 20px;
+  border-radius: 50%;
+}
+
+.video-tile__mic-badge svg { width: 12px; height: 12px; }
+
+.video-tile__mic-badge--muted {
+  background: rgba(248,113,113,0.25);
   color: var(--danger);
+}
+
+.video-tile__mic-badge--speaking {
+  background: rgba(74,222,128,0.2);
+  color: var(--accent);
+  animation: micPulse 0.6s ease-in-out infinite alternate;
+}
+
+@keyframes micPulse {
+  from { background: rgba(74,222,128,0.15); }
+  to   { background: rgba(74,222,128,0.35); }
+}
+
+.video-tile__name {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.video-tile__local-badge {
+  font-size: 9px;
+  padding: 1px 5px;
+  border-radius: var(--r-full);
+  background: rgba(255,255,255,0.12);
+  color: rgba(255,255,255,0.6);
   flex-shrink: 0;
 }
+
+/* ── Context menu ── */
+.vt-ctx {
+  position: fixed;
+  z-index: 200;
+  background: var(--bg-card);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-xl);
+  min-width: 200px;
+  overflow: hidden;
+  animation: fadeInScale 0.15s both;
+}
+
+.vt-ctx__header {
+  padding: 10px 14px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.vt-ctx__item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 10px 14px;
+  font-size: 14px;
+  color: var(--text-primary);
+  transition: background var(--t-fast);
+}
+.vt-ctx__item:hover { background: var(--bg-hover); }

@@ -1,195 +1,128 @@
 .control-bar {
   position: absolute;
-  bottom: 24px;
+  bottom: 20px;
   left: 50%;
   transform: translateX(-50%);
-  width: min(760px, calc(100vw - 32px));
-
+  width: min(800px, calc(100vw - 24px));
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-
-  padding: 10px 16px;
+  gap: 10px;
+  padding: 8px 14px;
   background: var(--bg-card);
   border: 1px solid var(--border-default);
   border-radius: var(--r-full);
   backdrop-filter: blur(24px);
   box-shadow: var(--shadow-lg);
-
   animation: slideInUp 0.4s var(--t-spring) both;
   z-index: 50;
 }
 
-/* Room code (left) */
+/* ── Room / share (left) ── */
 .control-bar__room {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-shrink: 0;
-  min-width: 0;
+  display: flex; align-items: center; gap: 6px; flex-shrink: 0;
 }
 
-.control-bar__room-code {
-  font-family: var(--font-display);
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-}
-
-.control-bar__copy {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
+.control-bar__share-btn {
+  display: flex; align-items: center; gap: 5px;
+  padding: 5px 10px;
+  border-radius: var(--r-full);
   background: var(--bg-glass);
+  border: 1px solid var(--border-subtle);
   color: var(--text-secondary);
-  transition: background var(--t-fast), color var(--t-fast);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  transition: background var(--t-fast), color var(--t-fast), border-color var(--t-fast);
+  white-space: nowrap;
 }
+.control-bar__share-btn:hover { background: var(--bg-glass-md); color: var(--text-primary); border-color: var(--border-default); }
 
-.control-bar__copy:hover {
-  background: var(--bg-glass-md);
-  color: var(--text-primary);
-}
+.control-bar__room-code { font-family: var(--font-display); text-transform: uppercase; }
+.control-bar__share-label { }
+
+.control-bar__share-btn--link { }
 
 .control-bar__e2ee {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 10px;
-  font-weight: 600;
-  color: var(--accent);
-  background: var(--accent-dim);
-  padding: 3px 8px;
-  border-radius: var(--r-full);
-  letter-spacing: 0.04em;
+  display: flex; align-items: center; gap: 4px;
+  font-size: 10px; font-weight: 600; color: var(--accent);
+  background: var(--accent-dim); padding: 3px 8px;
+  border-radius: var(--r-full); letter-spacing: 0.04em;
+  flex-shrink: 0;
 }
 
-/* Center buttons */
+/* ── Center ── */
 .control-bar__center {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-shrink: 0;
+  display: flex; align-items: center; gap: 5px; flex-shrink: 0;
 }
 
 .control-bar__divider {
-  width: 1px;
-  height: 28px;
-  background: var(--border-default);
-  margin: 0 4px;
+  width: 1px; height: 26px;
+  background: var(--border-default); margin: 0 3px;
 }
 
-.control-bar__spacer {
-  /* Mirror the left side width for center alignment */
-  flex: 1;
-  min-width: 80px;
-}
+.control-bar__spacer { flex: 1; min-width: 60px; }
 
-/* ─── Button ──────────────────────────────────────────────────────────── */
+/* ── Buttons ── */
 .control-btn {
   position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  padding: 8px 12px;
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 7px 11px;
   border-radius: var(--r-lg);
   background: var(--bg-glass);
   border: 1px solid var(--border-subtle);
   color: var(--text-primary);
-  transition: background var(--t-fast), border-color var(--t-fast),
-              color var(--t-fast), transform var(--t-fast);
-  white-space: nowrap;
-  min-width: 60px;
+  transition: background var(--t-fast), border-color var(--t-fast), color var(--t-fast), transform var(--t-fast);
+  white-space: nowrap; min-width: 54px;
 }
-
-.control-btn:hover {
-  background: var(--bg-glass-md);
-  border-color: var(--border-default);
-  transform: translateY(-1px);
-}
-
-.control-btn:active { transform: translateY(0) scale(0.97); }
+.control-btn:hover { background: var(--bg-glass-md); border-color: var(--border-default); transform: translateY(-1px); }
+.control-btn:active { transform: scale(0.97); }
 
 .control-btn--muted {
   background: var(--danger-dim);
-  border-color: rgba(248, 113, 113, 0.2);
+  border-color: rgba(248,113,113,0.2);
   color: var(--danger);
 }
+.control-btn--muted:hover { background: rgba(248,113,113,0.18); }
 
-.control-btn--muted:hover {
-  background: rgba(248, 113, 113, 0.18);
-}
-
-.control-btn__label {
-  font-size: 10px;
-  font-weight: 500;
-  color: var(--text-secondary);
-  line-height: 1;
-}
-
+.control-btn__label { font-size: 10px; font-weight: 500; color: var(--text-secondary); line-height: 1; }
 .control-btn--muted .control-btn__label { color: var(--danger); opacity: 0.8; }
 
-/* Leave button */
 .control-btn--leave {
-  background: rgba(239, 68, 68, 0.15);
-  border: 1px solid rgba(239, 68, 68, 0.25);
+  background: rgba(239,68,68,0.15);
+  border: 1px solid rgba(239,68,68,0.25);
   color: var(--danger);
-  padding: 8px 14px;
-  border-radius: var(--r-lg);
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  min-width: 60px;
+  padding: 7px 13px; border-radius: var(--r-lg);
+  flex-direction: column; align-items: center; gap: 2px;
+  min-width: 54px;
 }
+.control-btn--leave:hover { background: rgba(239,68,68,0.25); border-color: rgba(239,68,68,0.4); transform: translateY(-1px); }
+.control-btn--leave .control-btn__label { font-size: 10px; font-weight: 500; color: var(--danger); opacity: 0.8; }
 
-.control-btn--leave:hover {
-  background: rgba(239, 68, 68, 0.25);
-  border-color: rgba(239, 68, 68, 0.4);
-  transform: translateY(-1px);
-}
-
-.control-btn--leave .control-btn__label {
-  font-size: 10px;
-  font-weight: 500;
-  color: var(--danger);
-  opacity: 0.8;
-}
-
-/* Badge */
 .control-btn__badge {
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  min-width: 16px;
-  height: 16px;
-  padding: 0 4px;
-  background: var(--accent);
-  color: var(--bg-void);
-  border-radius: var(--r-full);
-  font-size: 9px;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  line-height: 1;
+  position: absolute; top: 4px; right: 4px;
+  min-width: 15px; height: 15px; padding: 0 3px;
+  background: var(--accent); color: var(--bg-void);
+  border-radius: var(--r-full); font-size: 9px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center; line-height: 1;
 }
 
-/* Mobile — hide labels */
-@media (max-width: 500px) {
+/* ── Mobile ── */
+@media (max-width: 540px) {
   .control-bar {
-    padding: 8px 12px;
-    bottom: 16px;
+    bottom: 12px;
+    padding: 6px 10px;
+    width: calc(100vw - 16px);
+    border-radius: var(--r-xl); /* slightly less round so more fits */
   }
-
+  /* On mobile: hide labels, shrink room info, but ALWAYS show leave */
   .control-btn__label { display: none; }
   .control-bar__room-code { display: none; }
+  .control-bar__share-label { display: none; }
   .control-bar__e2ee { display: none; }
-  .control-btn { min-width: 44px; padding: 8px; }
-  .control-btn--leave { min-width: 44px; padding: 8px; }
+  .control-bar__spacer { display: none; }
+  .control-bar__room { gap: 4px; }
+  .control-btn { min-width: 40px; padding: 8px; }
+  .control-btn--leave { min-width: 40px; padding: 8px; }
+  .control-bar__share-btn { padding: 7px 8px; }
 }
