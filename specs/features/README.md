@@ -1,0 +1,1 @@
+Feature specs live here, one file per change: `NNN-kebab-slug.md`, created from [`../templates/feature-spec.md`](../templates/feature-spec.md) (use `/spec-new`). Suggested order: see the roadmap in [`../gap-analysis.md`](../gap-analysis.md#c-suggested-roadmap-each-becomes-a-feature-spec). Lasting architectural choices go in [`../adr/`](../adr).
