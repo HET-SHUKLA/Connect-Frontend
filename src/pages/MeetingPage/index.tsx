@@ -468,8 +468,9 @@ export default function MeetingPage() {
         onToggleMic={handleToggleMic}
         onToggleCam={handleToggleCam}
         onToggleParticipants={() => setShowParticipants(v => !v)}
-        onLeave={handleLeave}
-      />
+        onLeave={handleLeave} onToggleSettings={function (): void {
+          throw new Error('Function not implemented.')
+        } }      />
 
       {showParticipants && (
         <ParticipantsPanel
