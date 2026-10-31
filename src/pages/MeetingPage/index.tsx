@@ -25,7 +25,7 @@ import './MeetingPage.css'
 
 const BACKEND_HOST = import.meta.env.VITE_BACKEND_HOST ?? '192.168.31.130:8080'
 const API = `http://${BACKEND_HOST}/api`
-const WS  = `ws://${BACKEND_HOST}/ws`
+const WS  = `http://${BACKEND_HOST}`
 
 type Phase = 'lobby' | 'connecting' | 'connected' | 'error'
 
@@ -176,10 +176,11 @@ export default function MeetingPage() {
       // the resolvers are already in the queue and won't be missed.
       const joinedPromise       = waitFor('joined-room')
       const capabilitiesPromise = waitFor('router-rtp-capabilities')
+      const joinErrorPromise    = waitFor('join-error').then(m => { throw new Error(m.reason) })
 
       send({ type: 'join-room', roomId })
 
-      const joinedMsg = await joinedPromise
+      const joinedMsg = await Promise.race([joinedPromise, joinErrorPromise])
       myPeerId.current = joinedMsg.peerId
 
       // Register public key with the REST API

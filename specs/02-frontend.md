@@ -21,7 +21,7 @@ Target additions (not built): login/register/verify-email pages, protected route
 | `components/VideoTile`, `LocalVideo` | Remote tile; self-view PiP with audio visualiser |
 | `components/ParticipantsPanel`, `Toast`, `DeviceSelector` | Side panel, join/leave toasts, camera/mic pickers |
 | `context/UserContext.tsx` | Display name only (no auth state yet) |
-| `lib/socket.ts` | Singleton `WebSocket` wrapper: `connect`, `on`, `send`, `disconnect` (**must** be called on leave to clear handlers) |
+| `lib/socket.ts` | Singleton Socket.IO client wrapper: `connect`, `on`, `send`, `disconnect` (**must** be called on leave to clear handlers) |
 | `lib/mediasoupClient.ts` | mediasoup `Device`, transports, produce/consume, `waitFor(type)` one-shot promises, mic/camera toggle, `replaceTrack`, E2EE worker wiring |
 | `lib/crypto.ts` | AES-GCM helpers (room key, packet encrypt/decrypt) |
 | `lib/keyExchange.ts` | ECDH P-256 key pair, shared key derivation (AES-GCM 256), room-key wrap/unwrap |
@@ -39,8 +39,8 @@ Target additions (not built): login/register/verify-email pages, protected route
 
 ## Config
 
-`VITE_BACKEND_HOST` = `host:port` without scheme (code builds `http://…/api` and `ws://…/ws`; falls back to `192.168.31.130:8080`). `.env` is gitignored; `.env.example` is committed (the `.gitignore` has a `!.env.example` exception). Production must use `https://`/`wss://` behind Nginx.
+`VITE_BACKEND_HOST` = `host:port` without scheme (code builds `http://…/api` and Socket.IO at `http://…`; falls back to `192.168.31.130:8080`). `.env` is gitignored; `.env.example` is committed (the `.gitignore` has a `!.env.example` exception). Production must use `https://`/`wss://` behind Nginx.
 
 ## Design intent from the report not reflected in code
 
-`useMediasoup()` facade hook (extract from MeetingPage), Axios client with in-memory access token + silent refresh, Socket.IO client, typed API layer, protected routes. Prefer extracting the facade hook and an `api/` module over adding more logic to `MeetingPage`.
+`useMediasoup()` facade hook (extract from MeetingPage), Axios client with in-memory access token + silent refresh, typed API layer, protected routes. Prefer extracting the facade hook and an `api/` module over adding more logic to `MeetingPage`.

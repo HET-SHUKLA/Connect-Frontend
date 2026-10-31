@@ -4,7 +4,7 @@ Connect-Backend **owns** this contract; this file is the frontend's mirror so yo
 
 ## Base URL
 
-`VITE_BACKEND_HOST` = `host:port` (no scheme). REST: `http://<host>/api`. WebSocket: `ws://<host>/ws`. (Production must be `https`/`wss`.)
+`VITE_BACKEND_HOST` = `host:port` (no scheme). REST: `http://<host>/api`. Socket.IO: `http://<host>` (default path `/socket.io`). (Production must be `https`.)
 
 ## REST
 
@@ -18,11 +18,11 @@ Connect-Backend **owns** this contract; this file is the frontend's mirror so yo
 
 Planned changes (not yet in backend): `/api/v1` prefix, `Authorization: Bearer <jwt>` on room endpoints, room password, host controls.
 
-## WebSocket (`/ws`), JSON messages with a `type`
+## Socket.IO — each message is an event named after its `type`, payload is the JSON message (`socket.emit(msg.type, msg)`)
 
 | Dir | `type` | Payload | Notes |
 |---|---|---|---|
-| C→S | `join-room` | `roomId` | Unknown room ⇒ server closes socket `4004` |
+| C→S | `join-room` | `roomId` | Unknown room ⇒ `join-error`, then the server disconnects |
 | S→C | `joined-room` | `peerId` | |
 | S→C | `router-rtp-capabilities` | `rtpCapabilities` | Load mediasoup `Device` |
 | C→S | `create-transport` | `roomId, direction: "send"\|"receive"` | |
@@ -38,8 +38,9 @@ Planned changes (not yet in backend): `/api/v1` prefix, `Authorization: Bearer <
 | C→S | `key-exchange` | `targetPeerId, encryptedRoomKey` | Relayed opaquely |
 | S→C | `key-exchange-received` | `fromPeerId, encryptedRoomKey` | |
 | S→C | `peer-left` | `peerId` | |
+| S→C | `join-error` | `reason` | Unknown room; the server then disconnects the socket |
 
-Server pings every 30 s (browser answers automatically). No server → client error message exists; failures surface as socket close or timeouts.
+Heartbeat is handled by Socket.IO. Auto-reconnect is disabled in the client (a reconnect would be a new peer without room state); the only error message is `join-error`.
 
 ## Frontend obligations
 
@@ -47,6 +48,6 @@ Server pings every 30 s (browser answers automatically). No server → client er
 - Treat unknown server message types as ignorable (forward compatibility).
 - On a breaking contract change announced by the backend: update `src/types.ts`, this file, and the code in one change.
 
-## Target contract (report §5.4, not implemented; see backend ADR on Socket.IO vs `ws`)
+## Target contract (report §5.4, not implemented; backend ADR-0003: Socket.IO adopted, event renaming pending)
 
 `room:join {roomId, token, password?}`, `room:joined`, `transport:create|created|connect`, `producer:create|new`, `consumer:create|created`, `room:leave`, `room:end`, chat events. **Whether this replaces the current vocabulary is an open decision owned by the backend**; don't pre-implement it.

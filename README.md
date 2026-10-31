@@ -41,7 +41,7 @@ The dev server runs over HTTPS (self-signed, `@vitejs/plugin-basic-ssl`) and lis
 
 | Variable | Description |
 |---|---|
-| `VITE_BACKEND_HOST` | Connect-Backend `host:port` **without** scheme, e.g. `localhost:8080`. The app calls `http://<host>/api` and `ws://<host>/ws`. Defaults to `192.168.31.130:8080` if unset |
+| `VITE_BACKEND_HOST` | Connect-Backend `host:port` **without** scheme, e.g. `localhost:8080`. The app calls `http://<host>/api` and connects Socket.IO to `http://<host>`. Defaults to `192.168.31.130:8080` if unset |
 
 `.env` is gitignored; only `.env.example` is committed.
 
@@ -73,7 +73,7 @@ src/
   context/
     UserContext.tsx     # Persists the display name across pages
   lib/
-    socket.ts           # WebSocket singleton (connect / on / send / disconnect)
+    socket.ts           # Socket.IO singleton (connect / on / send / disconnect)
     mediasoupClient.ts  # mediasoup Device, transports, produce/consume, E2EE wiring
     crypto.ts           # AES-GCM helpers
     keyExchange.ts      # ECDH P-256 key pair + room-key wrapping

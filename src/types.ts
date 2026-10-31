@@ -92,6 +92,11 @@ export type KeyExchangeMessage = {
     encryptedRoomKey: string
 }
 
+export type JoinErrorMessage = {
+    type: "join-error";
+    reason: string
+}
+
 export type KeyRequestedMessage = {
     type: "key-requested";
     peerId: string
@@ -123,4 +128,5 @@ export type ServerMessage =
     | PeerLeft
     | RouterRtpCapabilitiesMessage
     | KeyExchangeReceived
-    | KeyRequestedMessage;
+    | KeyRequestedMessage
+    | JoinErrorMessage;

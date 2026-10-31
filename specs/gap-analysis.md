@@ -8,7 +8,7 @@ Differences between the project report (target) and this repo's code, plus known
 |---|---|---|---|---|
 | G1 | Auth UI | Login/register forms, in-memory JWT, session management, protected routes | Display name only (`localStorage`) | FR-AUTH-*; see `05-auth-integration.md` |
 | G2 | HTTP client | Axios | `fetch` | Keep `fetch` (no need for Axios) — fix the report wording, or add a thin `api/` module |
-| G3 | Realtime client | Socket.IO client | Raw `WebSocket` (`lib/socket.ts`) | Follows backend decision (backend ADR-0003); don't change alone |
+| G3 | Realtime client | Socket.IO client | Socket.IO client (`lib/socket.ts`) — done | Rename events to colon style together with the backend |
 | G4 | Architecture | `useMediasoup()` facade hook | Logic inline in `MeetingPage` (~480 lines) + `lib/mediasoupClient.ts` | Refactor feature |
 | G5 | Chat | In-call chat panel | Not present | FR-CHAT-01 |
 | G6 | Screen share | UC-08 | Not present | FR-MEDIA-04 |
@@ -17,7 +17,7 @@ Differences between the project report (target) and this repo's code, plus known
 | G9 | Versions | React 18, Vite 5, TS 5 | React 19, Vite 8, TS 6 | Docs only |
 | G10 | Testing | Jest + Playwright E2E | No tests, no test script | NFR-QA-01 |
 | G11 | Quality gates | ESLint + Prettier + pre-commit hooks | ESLint script only | Add Prettier + hook |
-| G12 | Deployment | Static build behind Nginx/TLS in Docker | Manual `scp dist/` (note in local `.env`), plain `http://`/`ws://` URLs | Deployment feature; make scheme configurable (`https`/`wss`) |
+| G12 | Deployment | Static build behind Nginx/TLS in Docker | Manual `scp dist/` (note in local `.env`), plain `http://` URLs | Deployment feature; make scheme configurable (`https`/`wss`) |
 
 ## B. Known defects (not yet fixed)
 
@@ -28,8 +28,8 @@ Differences between the project report (target) and this repo's code, plus known
 | D3 | `pages/MeetingPage` | E2EE badge (`e2eeActive`) is set right after `initE2eeWorker` regardless of key delivery |
 | D4 | `pages/MeetingPage` | Possible split keys when two peers join an empty room concurrently (each generates a key); joiner trusts the first `key-exchange-received` |
 | D5 | `pages/MeetingPage` | `remotePeerNames` is never populated → remote tiles show peer-id prefixes; display names are not exchanged (needs a backend message) |
-| D6 | `lib/socket.ts` | `connect()` has no timeout/reconnect; server error messages don't exist so failures surface as generic errors |
-| D7 | `pages/*` | Backend URL scheme hard-coded to `http://`/`ws://`; default host `192.168.31.130:8080` is a personal LAN IP |
+| D6 | `lib/socket.ts` | no reconnect/rejoin logic (auto-reconnect deliberately off); only `join-error` exists as a server error message |
+| D7 | `pages/*` | Backend URL scheme hard-coded to `http://`; default host `192.168.31.130:8080` is a personal LAN IP |
 | D8 | `src/types.ts` | Manual mirror of backend types; no check that it stays in sync |
 | D9 | `types`, handlers | `any` used for socket handler messages and consumers |
 

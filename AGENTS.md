@@ -23,7 +23,7 @@ Source priority when sources disagree: user instruction > `specs/` > README/AGEN
 | [01-requirements.md](./specs/01-requirements.md) | Requirements relevant to this repo, with status |
 | [02-frontend.md](./specs/02-frontend.md) | Routes, components, meeting flow, mediasoup client, state, config |
 | [03-e2ee.md](./specs/03-e2ee.md) | Encryption design, threat model, weaknesses, rules (implemented in this repo) |
-| [04-backend-contract.md](./specs/04-backend-contract.md) | REST + WebSocket contract you consume (owned by Connect-Backend) |
+| [04-backend-contract.md](./specs/04-backend-contract.md) | REST + Socket.IO contract you consume (owned by Connect-Backend) |
 | [05-auth-integration.md](./specs/05-auth-integration.md) | Auth endpoints and token handling you consume (owned by Authentication-Service) |
 | [gap-analysis.md](./specs/gap-analysis.md) | Report-vs-code gaps, known defects, roadmap |
 | [adr/](./specs/adr) · [features/](./specs/features) · [templates/](./specs/templates) | Decisions, per-feature specs, templates |
@@ -50,7 +50,7 @@ No test suite exists yet. Don't claim tests passed; state exactly what you ran. 
 | `src/pages/MeetingPage` | Lobby + meeting orchestration (large; refactor planned) |
 | `src/components/` | `ControlBar`, `DeviceSelector`, `LocalVideo`, `ParticipantsPanel`, `Toast`, `VideoTile` |
 | `src/context/UserContext.tsx` | Display name (localStorage) |
-| `src/lib/socket.ts` | WebSocket wrapper (`waitFor`, handlers) |
+| `src/lib/socket.ts` | Socket.IO client wrapper (`connect`, `on`, `send`; `waitFor` lives in `mediasoupClient.ts`) |
 | `src/lib/mediasoupClient.ts` | Device, transports, produce/consume, E2EE worker setup |
 | `src/lib/crypto.ts`, `keyExchange.ts` | WebCrypto: AES-GCM room key, ECDH P-256 key wrapping |
 | `src/types.ts` | Mirror of Connect-Backend's signaling types — **not owned here** |
@@ -63,8 +63,8 @@ No test suite exists yet. Don't claim tests passed; state exactly what you ran. 
 
 ## Rules for every change
 
-- Strict TypeScript, no new `any`. Function components + hooks; keep media/WebSocket logic in `src/lib` or hooks, not in JSX.
-- Register WebSocket handlers before sending `join-room`; create `waitFor()` promises before the request they wait on.
+- Strict TypeScript, no new `any`. Function components + hooks; keep media/socket logic in `src/lib` or hooks, not in JSX.
+- Register socket handlers before sending `join-room`; create `waitFor()` promises before the request they wait on.
 - Stop media tracks and close transports/consumers/sockets on leave and unmount.
 - Never log, persist (`localStorage`, URLs) or send to the server room keys or private keys. Never claim "encrypted" in the UI unless the worker holds a key. Changes near E2EE need a note in [03-e2ee.md](./specs/03-e2ee.md).
 - Access tokens: memory only ([ADR-0001](./specs/adr/0001-in-memory-access-token.md)).
